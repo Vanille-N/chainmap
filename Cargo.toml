@@ -1,0 +1,13 @@
+[package]
+name = "chainmap"
+version = "0.0.0"
+authors = ["Vanille-N <neven.villani@gmail.com>"]
+edition = "2018"
+license = "GPL-3.0"
+description = "A ChainMap with mutability of intermediate maps"
+readme = "README.md"
+repository = "https://github.com/Vanille-N/chainmap"
+keywords = ["hashmap", "chain", "mutex"]
+categories = ["data-structures"]
+
+[dependencies]
