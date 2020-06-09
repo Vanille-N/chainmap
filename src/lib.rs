@@ -1,21 +1,34 @@
 use std::rc::Rc;
 use std::sync::Mutex;
 use std::collections::HashMap;
+use std::hash::Hash;
 
-pub struct ChainMap<K, V> {
+pub struct ChainMap<K, V>
+where
+  K: Eq + Hash,
+  V: Clone {
     head: Link<K, V>,
 }
 
 type Link<K, V> = Option<Rc<Node<K, V>>>;
 
-struct Node<K, V> {
+struct Node<K, V>
+where
+  K: Eq + Hash,
+  V: Clone {
     elem: Mutex<HashMap<K, V>>,
     next: Link<K, V>,
 }
 
-impl<K, V> ChainMap<K, V> {
+impl<K, V> ChainMap<K, V>
+where
+  K: Eq + Hash,
+  V: Clone {
     pub fn new() -> Self {
-        Self { head: None }
+        Self { head: Some(Rc::new(Node {
+            elem: Mutex::new(HashMap::new()),
+            next: None,
+        }))}
     }
 
     pub fn extend(&self) -> Self {
@@ -32,12 +45,34 @@ impl<K, V> ChainMap<K, V> {
         }))}
     }
 
-    pub fn tail(&self) -> Self {
+    /// Util only
+    fn tail(&self) -> Self {
         Self { head: self.head.as_ref().and_then(|node| node.next.clone()) }
     }
 
-    pub fn head(&self) -> Option<&Mutex<HashMap<K, V>>> {
+    /// Util only
+    fn head(&self) -> Option<&Mutex<HashMap<K, V>>> {
         self.head.as_ref().map(|node| &node.elem)
+    }
+    pub fn insert(&self, key: K, val: V) {
+        self.head().unwrap().lock().unwrap().insert(key, val);
+    }
+    pub fn get(&self, key: &K) -> Option<V> {
+        let mut r = &self.head;
+        loop {
+            if let Some(m) = r {
+                match m.elem.lock().unwrap().get(&key) {
+                    None => r = &m.next,
+                    Some(val) => return Some(val.clone()),
+                }
+            } else {
+                return None;
+            }
+        }
+    }
+
+    pub fn local_get(&self, key: &K) -> Option<V> {
+        self.head().unwrap().lock().unwrap().get(&key).map(|v| v.clone())
     }
 }
 
