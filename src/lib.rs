@@ -60,6 +60,7 @@ mod test {
         let ch0 = ChainMap::new();
         let ch1 = ch0.append(h1);
         let ch2 = ch1.append(h2);
+        // Note: although this is very ugly, it is only temporary
         assert_eq!(ch1.head().unwrap().lock().unwrap().get(&0), Some(&"a1"));
         assert_eq!(ch2.head().unwrap().lock().unwrap().get(&0), Some(&"a2"));
         let ch3a = ch2.extend();
