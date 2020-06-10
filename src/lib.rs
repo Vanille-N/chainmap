@@ -130,6 +130,109 @@ where
         self.insert(key.clone(), newval);
     }
 
+    /// Allows next element to be seen by `local_get`
+    fn extend_fallthrough(&self) -> Self {
+        Self {
+            head: Some(Rc::new(Node {
+                elem: Mutex::new(HashMap::new()),
+                next: self.head.clone(),
+                fallthrough: true,
+            })),
+        }
+    }
+
+    pub fn extend(&self) -> Self {
+        Self {
+            head: Some(Rc::new(Node {
+                elem: Mutex::new(HashMap::new()),
+                next: self.head.clone(),
+                fallthrough: false,
+            })),
+        }
+    }
+
+    /// Create a new scope, initialized with or without bindings.
+    ///
+    /// The new scope can `get` and `update` values from the parent scope, but `insert`s are only visible
+    /// to the new scope and its children.
+    ///
+    /// ```
+    /// # use chainmap::*;
+    /// # use std::collections::HashMap;
+    /// # macro_rules! map {
+    /// #     ( $( $key:expr => $val:expr ),* ) => {
+    /// #         { let mut h = HashMap::new();
+    /// #           $( h.insert($key, $val); )*
+    /// #           h
+    /// #         }
+    /// #     }
+    /// # }
+    /// let mut root = ChainMap::new_with(map![0 => 'a', 1 => 'b']);
+    /// let mut layer = root.extend_with(map![2 => 'c']);
+    /// root.insert(3, 'd');
+    /// root.update(&0, 'e');
+    /// layer.update(&1, 'f');
+    /// layer.update(&2, 'g');
+    /// ```
+    /// ```text
+    /// ┌────────┐   ┌────────┐
+    /// │  root  └───┘ layer  │
+    /// │          ⇇          │
+    /// │ 0 -> e ┌───┐ 2 -> g │
+    /// │ 1 -> f │   └────────┘
+    /// │ 3 -> d │
+    /// └────────┘
+    /// ```
+    /// ```
+    /// # use chainmap::*;
+    /// # use std::collections::HashMap;
+    /// # macro_rules! map {
+    /// #     ( $( $key:expr => $val:expr ),* ) => {
+    /// #         { let mut h = HashMap::new();
+    /// #           $( h.insert($key, $val); )*
+    /// #           h
+    /// #         }
+    /// #     }
+    /// # }
+    /// # let mut root = ChainMap::new_with(map![0 => 'a', 1 => 'b']);
+    /// # let mut layer = root.extend_with(map![2 => 'c']);
+    /// # root.insert(3, 'd');
+    /// # root.update(&0, 'e');
+    /// # layer.update(&1, 'f');
+    /// # layer.update(&2, 'g');
+    /// # macro_rules! check_that {
+    /// #     ( local_get? $m:tt has $( $k:tt ),* and not $( $n:tt ),* ) => {
+    /// #          $( $m.local_get(&$k).unwrap(); )*
+    /// #          if $( !$m.local_get(&$n).is_none() )||* { panic!(""); }
+    /// #     };
+    /// #     ( $m:tt[$k:tt] is None ) => { assert_eq!($m.get(&$k), None); };
+    /// #     ( $m:tt[$k:tt] is $c:tt ) => { assert_eq!($m.get(&$k), Some($c)); };
+    /// # }
+    /// check_that!(root[0] is 'e');
+    /// check_that!(layer[0] is 'e');
+    ///
+    /// check_that!(root[1] is 'f');
+    /// check_that!(layer[1] is 'f');
+    ///
+    /// check_that!(root[2] is None);
+    /// check_that!(layer[2] is 'g');
+    ///
+    /// check_that!(root[3] is 'd');
+    /// check_that!(layer[3] is 'd');
+    ///
+    /// check_that!(local_get? root has 0,1,3 and not 2);
+    /// check_that!(local_get? layer has 2 and not 0,1,3);
+    /// ```
+    pub fn extend_with(&self, h: HashMap<K, V>) -> Self {
+        Self {
+            head: Some(Rc::new(Node {
+                elem: Mutex::new(h),
+                next: self.head.clone(),
+                fallthrough: false,
+            })),
+        }
+    }
+
     pub fn fork(&mut self) -> Self {
         let newlevel = self.extend();
         let oldlevel = self.extend_fallthrough();
