@@ -8,7 +8,7 @@ use std::hash::Hash;
 /// General layout inspired by [A Persistent Singly-Linked Stack](https://rust-unofficial.github.io/too-many-lists/third.html), adapted and extended with `Mutex`es and `HashMap`s
 pub struct ChainMap<K, V>
 where
-  K: Eq + Hash,
+  K: Eq + Hash + Clone,
   V: Clone {
     head: Link<K, V>,
 }
@@ -17,7 +17,7 @@ type Link<K, V> = Option<Rc<Node<K, V>>>;
 
 struct Node<K, V>
 where
-  K: Eq + Hash,
+  K: Eq + Hash + Clone,
   V: Clone {
     elem: Mutex<HashMap<K, V>>,
     next: Link<K, V>,
@@ -25,7 +25,7 @@ where
 
 impl<K, V> ChainMap<K, V>
 where
-  K: Eq + Hash,
+  K: Eq + Hash + Clone,
   V: Clone {
     /// Create a new empty root
     pub fn new() -> Self {
@@ -108,6 +108,24 @@ where
                 panic!("Key does not exist, failed to update");
             }
         }
+    }
+
+    pub fn update_or(&self, key: &K, newval: V) {
+        let mut r = &self.head;
+        loop {
+            if let Some(m) = r {
+                match m.elem.lock().unwrap().get_mut(&key) {
+                    None => r = &m.next,
+                    Some(val) => {
+                        *val = newval;
+                        return;
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+        self.insert(key.clone(), newval);
     }
 }
 
@@ -257,5 +275,14 @@ mod test {
         let ch0 = ChainMap::new();
         let _ = ch0.extend_with(map![0 => 'a']);
         ch0.update(&0, 'b');
+    }
+
+    #[test]
+    fn update_or() {
+        let ch0 = ChainMap::new();
+        let ch1 = ch0.extend_with(map![0 => 'a']);
+        ch0.update_or(&0, 'b');
+        assert_eq!(ch0.get(&0), Some('b'));
+        assert_eq!(ch1.get(&0), Some('a'));
     }
 }
