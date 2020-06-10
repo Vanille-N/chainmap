@@ -50,20 +50,18 @@ Where each `[ $( $key => $value ),* ]` is a level of a tree of `ChainMap`s built
 
 This it turn could be declared as
 ```rust
-let main_scope = ChainMap::new();
+let mut main_scope = ChainMap::new();
 main_scope.insert("_box2", 5i32);
 
-let nested_scope = main_scope.extend();
+let mut nested_scope = main_scope.extend();
 nested_scope.insert("_box1", 5i32);
 
 let mut loop_scope = Vec::new();
 for _ in 0..1000 {
     let mut h = HashMap::new();
     h.insert("_box1", 3i32);
-    loop_scope.push(main_scope.extend().append(h));
+    loop_scope.push(main_scope.extend().extend_with(h));
 }
 ```
-
-
 
 The rules for which map entries are accessible from a certain level of the `ChainMap` tree are exactly the same as how they would be for the corresponding scopes.
