@@ -28,18 +28,29 @@ impl<K, V> ChainMap<K, V>
 where
   K: Eq + Hash + Clone,
   V: Clone {
-    /// Create a new empty root
-    pub fn new() -> Self {
     /// Util only
     #[allow(dead_code)]
     fn tail(&self) -> Self {
+        Self {
+            head: self.head.as_ref().and_then(|node| node.next.clone()),
+        }
+    }
+
+    /// Util only
+    #[allow(dead_code)]
+    fn head(&self) -> Option<&Mutex<HashMap<K, V>>> {
+        self.head.as_ref().map(|node| &node.elem)
+    }
+
+    /// Create a new empty root
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
         Self {
             head: Some(Rc::new(Node {
                 elem: Mutex::new(HashMap::new()),
                 next: None,
                 fallthrough: false,
             })),
-            head: self.head.as_ref().and_then(|node| node.next.clone()),
         }
     }
 
@@ -49,43 +60,6 @@ where
             head: Some(Rc::new(Node {
                 elem: Mutex::new(h),
                 next: None,
-                fallthrough: false,
-            })),
-        }
-    /// Util only
-    #[allow(dead_code)]
-    fn head(&self) -> Option<&Mutex<HashMap<K, V>>> {
-        self.head.as_ref().map(|node| &node.elem)
-    }
-
-    /// Create a new branch an put in an empty level
-    pub fn extend(&self) -> Self {
-        Self {
-            head: Some(Rc::new(Node {
-                elem: Mutex::new(HashMap::new()),
-                next: self.head.clone(),
-                fallthrough: false,
-            })),
-        }
-    }
-
-    /// Allows next element to be seen by `local_get`
-    fn extend_fallthrough(&self) -> Self {
-        Self {
-            head: Some(Rc::new(Node {
-                elem: Mutex::new(HashMap::new()),
-                next: self.head.clone(),
-                fallthrough: true,
-            })),
-        }
-    }
-
-    /// Create a new branch and initialize it with given map
-    pub fn extend_with(&self, h: HashMap<K, V>) -> Self {
-        Self {
-            head: Some(Rc::new(Node {
-                elem: Mutex::new(h),
-                next: self.head.clone(),
                 fallthrough: false,
             })),
         }
@@ -99,71 +73,58 @@ where
     /// Retrieve value associated with the first appearance of `key` in the chain
     pub fn get(&self, key: &K) -> Option<V> {
         let mut r = &self.head;
-        loop {
-            if let Some(m) = r {
-                match m.elem.lock().unwrap().get(&key) {
-                    None => r = &m.next,
-                    Some(val) => return Some(val.clone()),
-                }
-            } else {
-                return None;
+        while let Some(m) = r {
+            match m.elem.lock().unwrap().get(&key) {
+                None => r = &m.next,
+                Some(val) => return Some(val.clone()),
             }
         }
+        None
     }
 
     /// Check associated value only in topmost maps: stops at the first non-fallthrough level
     pub fn local_get(&self, key: &K) -> Option<V> {
         let mut r = &self.head;
-        loop {
-            if let Some(m) = r {
-                match m.elem.lock().unwrap().get(&key) {
-                    None => {
-                        if m.fallthrough {
-                            r = &m.next;
-                        } else {
-                            return None;
-                        }
+        while let Some(m) = r {
+            match m.elem.lock().unwrap().get(&key) {
+                None => {
+                    if m.fallthrough {
+                        r = &m.next;
+                    } else {
+                        return None;
                     }
-                    Some(val) => return Some(val.clone()),
                 }
-            } else {
-                return None;
+                Some(val) => return Some(val.clone()),
             }
         }
+        None
     }
 
     /// Replace old value with new, panics if `key` does not exist
     pub fn update(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
-        loop {
-            if let Some(m) = r {
-                match m.elem.lock().unwrap().get_mut(&key) {
-                    None => r = &m.next,
-                    Some(val) => {
-                        *val = newval;
-                        return;
-                    }
+        while let Some(m) = r {
+            match m.elem.lock().unwrap().get_mut(&key) {
+                None => r = &m.next,
+                Some(val) => {
+                    *val = newval;
+                    return;
                 }
-            } else {
-                panic!("Key does not exist, failed to update");
             }
         }
+        panic!("Key does not exist, failed to update");
     }
 
     /// Replace old value with new, create binding in topmost map if `key` does not exist
     pub fn update_or(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
-        loop {
-            if let Some(m) = r {
-                match m.elem.lock().unwrap().get_mut(&key) {
-                    None => r = &m.next,
-                    Some(val) => {
-                        *val = newval;
-                        return;
-                    }
+        while let Some(m) = r {
+            match m.elem.lock().unwrap().get_mut(&key) {
+                None => r = &m.next,
+                Some(val) => {
+                    *val = newval;
+                    return;
                 }
-            } else {
-                break;
             }
         }
         self.insert(key.clone(), newval);
