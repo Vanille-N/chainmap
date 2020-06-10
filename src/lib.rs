@@ -100,7 +100,9 @@ where
         None
     }
 
-    /// Replace old value with new, panics if `key` does not exist
+    /// Replace old value with new
+    /// # Panics
+    /// Panics if `key` does not already exist
     pub fn update(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
         while let Some(m) = r {
@@ -155,6 +157,7 @@ where
     ///
     /// The new scope can `get` and `update` values from the parent scope, but `insert`s are only visible
     /// to the new scope and its children.
+    /// # Examples
     ///
     /// ```
     /// # use chainmap::*;
@@ -245,6 +248,8 @@ where
     /// but later bindings made to `self` are not visible to the other branches.
     ///
     /// Updates, however, are visible.
+    ///
+    /// # Examples
     ///
     /// ```
     /// # use chainmap::*;
