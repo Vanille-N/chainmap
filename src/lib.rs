@@ -173,7 +173,15 @@ where
         self.insert(key.clone(), newval);
     }
 
-    /// Same as `extend`, but later bindings made to `self` are not visible to the other branches (non-fallthrough)
+    pub fn fork(&mut self) -> Self {
+        let newlevel = self.extend();
+        let oldlevel = self.extend_fallthrough();
+        std::mem::replace(&mut *self, oldlevel);
+        newlevel
+    }
+
+    /// `fork` and `fork_with` are the same as `extend` and `extend_with`,
+    /// but later bindings made to `self` are not visible to the other branches (non-fallthrough)
     ///
     /// ```
     /// # use chainmap::*;
@@ -230,14 +238,6 @@ where
     /// assert!(root[2] is 'c');
     /// assert!(layer[2] is None);
     ///```
-    pub fn fork(&mut self) -> Self {
-        let newlevel = self.extend();
-        let oldlevel = self.extend_fallthrough();
-        std::mem::replace(&mut *self, oldlevel);
-        newlevel
-    }
-
-    /// Same as `extend_with`, but later bindings made to `self` are not visible to the other branches (non-fallthrough)
     pub fn fork_with(&mut self, h: HashMap<K, V>) -> Self {
         let newlevel = self.extend_with(h);
         let oldlevel = self.extend_fallthrough();
