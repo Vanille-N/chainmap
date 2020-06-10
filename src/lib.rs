@@ -105,16 +105,92 @@ mod test {
         let ch0 = ChainMap::new();
         let ch1 = ch0.append(h1);
         let ch2 = ch1.append(h2);
+        ch0.insert(0, "z0");
         // Note: although this is very ugly, it is only temporary
         assert_eq!(ch1.head().unwrap().lock().unwrap().get(&0), Some(&"a1"));
         assert_eq!(ch2.head().unwrap().lock().unwrap().get(&0), Some(&"a2"));
         let ch3a = ch2.extend();
         let ch3b = ch2.extend();
-        ch3a.head().unwrap().lock().unwrap().insert(4, "e3a");
-        ch2.head().unwrap().lock().unwrap().insert(4, "e2");
+        ch3a.insert(4, "e3a");
+        ch2.insert(4, "e2");
         assert_eq!(ch2.head().unwrap().lock().unwrap().get(&4), Some(&"e2"));
         assert_eq!(ch3a.head().unwrap().lock().unwrap().get(&4), Some(&"e3a"));
         assert_eq!(ch3a.tail().head().unwrap().lock().unwrap().get(&4), Some(&"e2"));
         assert_eq!(ch3b.tail().head().unwrap().lock().unwrap().get(&4), Some(&"e2"));
+    }
+
+    #[test]
+    fn insert_and_get() {
+        let ch0 = ChainMap::new();
+        ch0.insert(1, "a0");
+        ch0.insert(2, "b0");
+        let ch1a = ch0.extend();
+        ch1a.insert(3, "c1");
+        let ch1b = ch0.extend();
+        ch1b.insert(4, "d1");
+        assert_eq!(ch0.get(&1), Some("a0"));
+        assert_eq!(ch1a.get(&3), Some("c1"));
+        assert_eq!(ch1b.get(&4), Some("d1"));
+        assert_eq!(ch0.get(&3), None);
+        assert_eq!(ch1b.get(&3), None);
+        assert_eq!(ch1a.get(&4), None);
+    }
+
+    #[test]
+    fn deep_get() {
+        let ch0 = ChainMap::new();
+        ch0.insert(1, "a0");
+        ch0.insert(2, "b0");
+        let ch1 = ch0.extend();
+        let ch2 = ch1.extend();
+        let ch3 = ch2.extend();
+        let ch4 = ch3.extend();
+        assert_eq!(ch4.get(&1), Some("a0"));
+        assert_eq!(ch4.get(&2), Some("b0"));
+        assert_eq!(ch4.get(&3), None);
+        ch4.insert(3, "c4");
+        assert_eq!(ch4.get(&3), Some("c4"));
+        assert_eq!(ch3.get(&3), None);
+        assert_eq!(ch2.get(&3), None);
+        assert_eq!(ch1.get(&3), None);
+        assert_eq!(ch0.get(&3), None);
+    }
+
+    #[test]
+    fn local_get() {
+        let ch0 = ChainMap::new();
+        ch0.insert(1, "a0");
+        let ch1 = ch0.extend();
+        let ch2 = ch1.extend();
+        let ch3 = ch2.extend();
+        let ch4 = ch3.extend();
+        assert_eq!(ch4.local_get(&1), None);
+        assert_eq!(ch4.local_get(&3), None);
+        ch4.insert(3, "c4");
+        assert_eq!(ch4.local_get(&3), Some("c4"));
+        assert_eq!(ch3.local_get(&3), None);
+        assert_eq!(ch2.local_get(&3), None);
+        assert_eq!(ch1.local_get(&3), None);
+        assert_eq!(ch0.local_get(&3), None);
+        assert_eq!(ch0.local_get(&1), Some("a0"));
+    }
+
+    #[test]
+    fn override_insert() {
+        let ch0 = ChainMap::new();
+        let ch1 = ch0.extend();
+        let ch2 = ch1.extend();
+        let ch3 = ch2.extend();
+        let ch4 = ch3.extend();
+        ch0.insert(0, "0");
+        ch1.insert(0, "1");
+        ch2.insert(0, "2");
+        ch3.insert(0, "3");
+        ch4.insert(0, "4");
+        assert_eq!(ch0.get(&0), Some("0"));
+        assert_eq!(ch1.get(&0), Some("1"));
+        assert_eq!(ch2.get(&0), Some("2"));
+        assert_eq!(ch3.get(&0), Some("3"));
+        assert_eq!(ch4.get(&0), Some("4"));
     }
 }
