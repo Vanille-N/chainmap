@@ -35,6 +35,14 @@ where
         }))}
     }
 
+    /// Create a new root and initialize with given map
+    pub fn new_with(h: HashMap<K, V>) -> Self {
+        Self { head: Some(Rc::new(Node {
+            elem: Mutex::new(h),
+            next: None,
+        }))}
+    }
+
     /// Create a new branch an put in an empty level
     pub fn extend(&self) -> Self {
         Self { head: Some(Rc::new(Node {
@@ -44,7 +52,7 @@ where
     }
 
     /// Create a new branch and initialize it with given map
-    pub fn append(&self, elem: HashMap<K, V>) -> Self {
+    pub fn extend_with(&self, elem: HashMap<K, V>) -> Self {
         Self { head: Some(Rc::new(Node {
             elem: Mutex::new(elem),
             next: self.head.clone(),
@@ -84,6 +92,23 @@ where
     pub fn local_get(&self, key: &K) -> Option<V> {
         self.head().unwrap().lock().unwrap().get(&key).map(|v| v.clone())
     }
+
+    pub fn update(&self, key: &K, newval: V) {
+        let mut r = &self.head;
+        loop {
+            if let Some(m) = r {
+                match m.elem.lock().unwrap().get_mut(&key) {
+                    None => r = &m.next,
+                    Some(val) => {
+                        *val = newval;
+                        return;
+                    }
+                }
+            } else {
+                panic!("Key does not exist, failed to update");
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -103,8 +128,8 @@ mod test {
         let h1 = map![0 => "a1", 1 => "b1", 2 => "c1"];
         let h2 = map![0 => "a2", 3 => "d2"];
         let ch0 = ChainMap::new();
-        let ch1 = ch0.append(h1);
-        let ch2 = ch1.append(h2);
+        let ch1 = ch0.extend_with(h1);
+        let ch2 = ch1.extend_with(h2);
         ch0.insert(0, "z0");
         // Note: although this is very ugly, it is only temporary
         assert_eq!(ch1.head().unwrap().lock().unwrap().get(&0), Some(&"a1"));
@@ -192,5 +217,45 @@ mod test {
         assert_eq!(ch2.get(&0), Some("2"));
         assert_eq!(ch3.get(&0), Some("3"));
         assert_eq!(ch4.get(&0), Some("4"));
+    }
+
+    #[test]
+    fn update() {
+        let ch0 = ChainMap::new_with(map![0 => 'a']);
+        let ch1a = ch0.extend();
+        let ch1b = ch0.extend_with(map![0 => 'b']);
+        let ch2 = ch1a.extend_with(map![0 => 'c']);
+        assert_eq!(ch0.get(&0), Some('a'));
+        assert_eq!(ch1a.get(&0), Some('a'));
+        assert_eq!(ch1b.get(&0), Some('b'));
+        assert_eq!(ch2.get(&0), Some('c'));
+        ch0.update(&0, 'd');
+        assert_eq!(ch0.get(&0), Some('d'));
+        assert_eq!(ch1a.get(&0), Some('d'));
+        assert_eq!(ch1b.get(&0), Some('b'));
+        assert_eq!(ch2.get(&0), Some('c'));
+        ch1a.update(&0, 'e');
+        assert_eq!(ch0.get(&0), Some('e'));
+        assert_eq!(ch1a.get(&0), Some('e'));
+        assert_eq!(ch1b.get(&0), Some('b'));
+        assert_eq!(ch2.get(&0), Some('c'));
+        ch1b.update(&0, 'f');
+        assert_eq!(ch0.get(&0), Some('e'));
+        assert_eq!(ch1a.get(&0), Some('e'));
+        assert_eq!(ch1b.get(&0), Some('f'));
+        assert_eq!(ch2.get(&0), Some('c'));
+        ch2.update(&0, 'g');
+        assert_eq!(ch0.get(&0), Some('e'));
+        assert_eq!(ch1a.get(&0), Some('e'));
+        assert_eq!(ch1b.get(&0), Some('f'));
+        assert_eq!(ch2.get(&0), Some('g'));
+    }
+
+    #[test]
+    #[should_panic]
+    fn update_missing() {
+        let ch0 = ChainMap::new();
+        let _ = ch0.extend_with(map![0 => 'a']);
+        ch0.update(&0, 'b');
     }
 }
