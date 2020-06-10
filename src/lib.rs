@@ -173,7 +173,63 @@ where
         self.insert(key.clone(), newval);
     }
 
-    /// Same as `extend`, but later bindings made to `self` are not visible to the other branches
+    /// Same as `extend`, but later bindings made to `self` are not visible to the other branches (non-fallthrough)
+    ///
+    /// ```
+    /// # use chainmap::*;
+    /// # use std::collections::HashMap;
+    /// # macro_rules! map {
+    /// #     ( $( $key:expr => $val:expr ),* ) => {
+    /// #         { let mut h = HashMap::new();
+    /// #           $( h.insert($key, $val); )*
+    /// #           h
+    /// #         }
+    /// #     }
+    /// # }
+    /// let mut root = ChainMap::new_with(map![0 => 'a']);
+    /// let layer = root.fork_with(map![1 => 'b']);
+    /// root.insert(2, 'c');
+    /// ```
+    /// ```text
+    /// ┌─────────┐    ┌─────────┐
+    /// │ ex-root └────┘ layer   │
+    /// │           ⇇            │
+    /// │ 0 -> a  ┌────┐ 1 -> b  │
+    /// └──┐   ┌──┘    └─────────┘
+    ///    │ ⇈ │
+    /// ┌──┘   └──┐
+    /// │  root   │
+    /// │         │
+    /// │ 2 -> c  │
+    /// └─────────┘
+    /// ```
+    /// ```
+    /// # use chainmap::*;
+    /// # use std::collections::HashMap;
+    /// # macro_rules! map {
+    /// #     ( $( $key:expr => $val:expr ),* ) => {
+    /// #         { let mut h = HashMap::new();
+    /// #           $( h.insert($key, $val); )*
+    /// #           h
+    /// #         }
+    /// #     }
+    /// # }
+    /// # let mut root = ChainMap::new_with(map![0 => 'a']);
+    /// # let layer = root.fork_with(map![1 => 'b']);
+    /// # root.insert(2, 'c');
+    /// # macro_rules! assert {
+    /// #     ( $m:tt[$k:tt] is None ) => { assert_eq!($m.get(&$k), None); };
+    /// #     ( $m:tt[$k:tt] is $c:tt ) => { assert_eq!($m.get(&$k), Some($c)); };
+    /// # }
+    /// assert!(root[0] is 'a');
+    /// assert!(layer[0] is 'a');
+    ///
+    /// assert!(root[1] is None);
+    /// assert!(layer[1] is 'b');
+    ///
+    /// assert!(root[2] is 'c');
+    /// assert!(layer[2] is None);
+    ///```
     pub fn fork(&mut self) -> Self {
         let newlevel = self.extend();
         let oldlevel = self.extend_fallthrough();
@@ -181,7 +237,7 @@ where
         newlevel
     }
 
-    /// Same as `extend_with`, but later bindings made to `self` are not visible to the other branches
+    /// Same as `extend_with`, but later bindings made to `self` are not visible to the other branches (non-fallthrough)
     pub fn fork_with(&mut self, h: HashMap<K, V>) -> Self {
         let newlevel = self.extend_with(h);
         let oldlevel = self.extend_fallthrough();
@@ -366,6 +422,11 @@ mod test {
         assert_eq!(ch0.local_get(&0), Some('c'));
         assert_eq!(ch1.get(&0), Some('c'));
         assert_eq!(ch1.local_get(&0), None);
+        ch0.insert(1, 'd');
+        assert_eq!(ch0.get(&1), Some('d'));
+        assert_eq!(ch0.local_get(&1), Some('d'));
+        assert_eq!(ch1.get(&1), None);
+        assert_eq!(ch1.local_get(&1), None);
     }
 
 }
