@@ -1,15 +1,18 @@
-use std::rc::Rc;
-use std::sync::Mutex;
+//#![doc(html_playground_url = "https://play.rust-lang.org/")]
+
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::rc::Rc;
+use std::sync::Mutex;
 
 /// A structure for managing a tree of `HashMap`s
 ///
 /// General layout inspired by [A Persistent Singly-Linked Stack](https://rust-unofficial.github.io/too-many-lists/third.html), adapted and extended with `Mutex`es and `HashMap`s
 pub struct ChainMap<K, V>
 where
-  K: Eq + Hash + Clone,
-  V: Clone {
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
     head: Link<K, V>,
 }
 
@@ -17,8 +20,9 @@ type Link<K, V> = Option<Rc<Node<K, V>>>;
 
 struct Node<K, V>
 where
-  K: Eq + Hash + Clone,
-  V: Clone {
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
     elem: Mutex<HashMap<K, V>>,
     next: Link<K, V>,
     fallthrough: bool,
@@ -26,8 +30,9 @@ where
 
 impl<K, V> ChainMap<K, V>
 where
-  K: Eq + Hash + Clone,
-  V: Clone {
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
     /// Util only
     #[allow(dead_code)]
     fn tail(&self) -> Self {
@@ -170,6 +175,8 @@ where
     /// #         }
     /// #     }
     /// # }
+    /// #
+    /// #
     /// let mut root = ChainMap::new_with(map![0 => 'a', 1 => 'b']);
     /// let mut layer = root.extend_with(map![2 => 'c']);
     /// root.insert(3, 'd');
@@ -197,12 +204,7 @@ where
     /// #         }
     /// #     }
     /// # }
-    /// # let mut root = ChainMap::new_with(map![0 => 'a', 1 => 'b']);
-    /// # let mut layer = root.extend_with(map![2 => 'c']);
-    /// # root.insert(3, 'd');
-    /// # root.update(&0, 'e');
-    /// # layer.update(&1, 'f');
-    /// # layer.update(&2, 'g');
+    /// #
     /// # macro_rules! check_that {
     /// #     ( local_get? $m:tt has $( $k:tt ),* and not $( $n:tt ),* ) => {
     /// #          $( $m.local_get(&$k).unwrap(); )*
@@ -211,6 +213,16 @@ where
     /// #     ( $m:tt[$k:tt] is None ) => { assert_eq!($m.get(&$k), None); };
     /// #     ( $m:tt[$k:tt] is $c:tt ) => { assert_eq!($m.get(&$k), Some($c)); };
     /// # }
+    /// #
+    /// #
+    /// # let mut root = ChainMap::new_with(map![0 => 'a', 1 => 'b']);
+    /// # let mut layer = root.extend_with(map![2 => 'c']);
+    /// # root.insert(3, 'd');
+    /// # root.update(&0, 'e');
+    /// # layer.update(&1, 'f');
+    /// # layer.update(&2, 'g');
+    /// #
+    /// #
     /// check_that!(root[0] is 'e');
     /// check_that!(layer[0] is 'e');
     ///
@@ -262,6 +274,8 @@ where
     /// #         }
     /// #     }
     /// # }
+    /// #
+    /// #
     /// let mut root = ChainMap::new_with(map![0 => 'a']);
     /// let layer = root.fork_with(map![1 => 'b']);
     /// root.insert(2, 'c');
@@ -291,10 +305,6 @@ where
     /// #         }
     /// #     }
     /// # }
-    /// # let mut root = ChainMap::new_with(map![0 => 'a']);
-    /// # let layer = root.fork_with(map![1 => 'b']);
-    /// # root.insert(2, 'c');
-    /// # root.update(&0, 'd');
     /// # macro_rules! check_that {
     /// #     ( local_get? $m:tt has $( $k:tt ),* and not $( $n:tt ),* ) => {
     /// #          $( $m.local_get(&$k).unwrap(); )*
@@ -303,6 +313,14 @@ where
     /// #     ( $m:tt[$k:tt] is None ) => { assert_eq!($m.get(&$k), None); };
     /// #     ( $m:tt[$k:tt] is $c:tt ) => { assert_eq!($m.get(&$k), Some($c)); };
     /// # }
+    /// #
+    /// #
+    /// # let mut root = ChainMap::new_with(map![0 => 'a']);
+    /// # let layer = root.fork_with(map![1 => 'b']);
+    /// # root.insert(2, 'c');
+    /// # root.update(&0, 'd');
+    /// #
+    /// #
     /// check_that!(root[0] is 'd');
     /// check_that!(layer[0] is 'd');
     ///
@@ -353,8 +371,14 @@ mod test {
         ch2.insert(4, "e2");
         assert_eq!(ch2.head().unwrap().lock().unwrap().get(&4), Some(&"e2"));
         assert_eq!(ch3a.head().unwrap().lock().unwrap().get(&4), Some(&"e3a"));
-        assert_eq!(ch3a.tail().head().unwrap().lock().unwrap().get(&4), Some(&"e2"));
-        assert_eq!(ch3b.tail().head().unwrap().lock().unwrap().get(&4), Some(&"e2"));
+        assert_eq!(
+            ch3a.tail().head().unwrap().lock().unwrap().get(&4),
+            Some(&"e2")
+        );
+        assert_eq!(
+            ch3b.tail().head().unwrap().lock().unwrap().get(&4),
+            Some(&"e2")
+        );
     }
 
     #[test]
@@ -505,5 +529,4 @@ mod test {
         assert_eq!(ch1.get(&1), None);
         assert_eq!(ch1.local_get(&1), None);
     }
-
 }
