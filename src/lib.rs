@@ -137,8 +137,11 @@ where
         newlevel
     }
 
+    ///
     /// `fork` and `fork_with` are the same as `extend` and `extend_with`,
-    /// but later bindings made to `self` are not visible to the other branches (non-fallthrough)
+    /// but later bindings made to `self` are not visible to the other branches.
+    ///
+    /// Updates, however, are visible.
     ///
     /// ```
     /// # use chainmap::*;
@@ -154,14 +157,15 @@ where
     /// let mut root = ChainMap::new_with(map![0 => 'a']);
     /// let layer = root.fork_with(map![1 => 'b']);
     /// root.insert(2, 'c');
+    /// root.update(&0, 'd');
     /// ```
     /// ```text
-    /// ┌─────────┐    ┌─────────┐
-    /// │ ex-root └────┘ layer   │
-    /// │           ⇇            │
-    /// │ 0 -> a  ┌────┐ 1 -> b  │
-    /// └──┐   ┌──┘    └─────────┘
-    ///    │ ⇈ │
+    /// ┌─────────┐   ┌─────────┐
+    /// │ ex-root └───┘ layer   │
+    /// │           ⇇           │
+    /// │ 0 -> d  ┌───┐ 1 -> b  │
+    /// └──┐   ┌──┘   └─────────┘
+    ///    │ ⇈ │ <- fallthrough
     /// ┌──┘   └──┐
     /// │  root   │
     /// │         │
@@ -182,18 +186,26 @@ where
     /// # let mut root = ChainMap::new_with(map![0 => 'a']);
     /// # let layer = root.fork_with(map![1 => 'b']);
     /// # root.insert(2, 'c');
-    /// # macro_rules! assert {
+    /// # root.update(&0, 'd');
+    /// # macro_rules! check_that {
+    /// #     ( local_get? $m:tt has $( $k:tt ),* and not $( $n:tt ),* ) => {
+    /// #          $( $m.local_get(&$k).unwrap(); )*
+    /// #          if $( !$m.local_get(&$n).is_none() )||* { panic!(""); }
+    /// #     };
     /// #     ( $m:tt[$k:tt] is None ) => { assert_eq!($m.get(&$k), None); };
     /// #     ( $m:tt[$k:tt] is $c:tt ) => { assert_eq!($m.get(&$k), Some($c)); };
     /// # }
-    /// assert!(root[0] is 'a');
-    /// assert!(layer[0] is 'a');
+    /// check_that!(root[0] is 'd');
+    /// check_that!(layer[0] is 'd');
     ///
-    /// assert!(root[1] is None);
-    /// assert!(layer[1] is 'b');
+    /// check_that!(root[1] is None);
+    /// check_that!(layer[1] is 'b');
     ///
-    /// assert!(root[2] is 'c');
-    /// assert!(layer[2] is None);
+    /// check_that!(root[2] is 'c');
+    /// check_that!(layer[2] is None);
+    ///
+    /// check_that!(local_get? root has 0,2 and not 1);
+    /// check_that!(local_get? layer has 1 and not 0,2);
     ///```
     pub fn fork_with(&mut self, h: HashMap<K, V>) -> Self {
         let newlevel = self.extend_with(h);
