@@ -30,12 +30,16 @@ where
   V: Clone {
     /// Create a new empty root
     pub fn new() -> Self {
+    /// Util only
+    #[allow(dead_code)]
+    fn tail(&self) -> Self {
         Self {
             head: Some(Rc::new(Node {
                 elem: Mutex::new(HashMap::new()),
                 next: None,
                 fallthrough: false,
             })),
+            head: self.head.as_ref().and_then(|node| node.next.clone()),
         }
     }
 
@@ -48,6 +52,10 @@ where
                 fallthrough: false,
             })),
         }
+    /// Util only
+    #[allow(dead_code)]
+    fn head(&self) -> Option<&Mutex<HashMap<K, V>>> {
+        self.head.as_ref().map(|node| &node.elem)
     }
 
     /// Create a new branch an put in an empty level
@@ -81,18 +89,6 @@ where
                 fallthrough: false,
             })),
         }
-    }
-
-    /// Util only
-    fn tail(&self) -> Self {
-        Self {
-            head: self.head.as_ref().and_then(|node| node.next.clone()),
-        }
-    }
-
-    /// Util only
-    fn head(&self) -> Option<&Mutex<HashMap<K, V>>> {
-        self.head.as_ref().map(|node| &node.elem)
     }
 
     /// Create a new binding in the toplevel
