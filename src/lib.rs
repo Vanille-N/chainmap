@@ -3,6 +3,9 @@ use std::sync::Mutex;
 use std::collections::HashMap;
 use std::hash::Hash;
 
+/// A structure for managing a tree of `HashMap`s
+///
+/// General layout inspired by [A Persistent Singly-Linked Stack](https://rust-unofficial.github.io/too-many-lists/third.html), adapted and extended with `Mutex`es and `HashMap`s
 pub struct ChainMap<K, V>
 where
   K: Eq + Hash,
@@ -24,6 +27,7 @@ impl<K, V> ChainMap<K, V>
 where
   K: Eq + Hash,
   V: Clone {
+    /// Create a new empty root
     pub fn new() -> Self {
         Self { head: Some(Rc::new(Node {
             elem: Mutex::new(HashMap::new()),
@@ -31,6 +35,7 @@ where
         }))}
     }
 
+    /// Create a new branch an put in an empty level
     pub fn extend(&self) -> Self {
         Self { head: Some(Rc::new(Node {
             elem: Mutex::new(HashMap::new()),
@@ -38,6 +43,7 @@ where
         }))}
     }
 
+    /// Create a new branch and initialize it with given map
     pub fn append(&self, elem: HashMap<K, V>) -> Self {
         Self { head: Some(Rc::new(Node {
             elem: Mutex::new(elem),
@@ -54,9 +60,13 @@ where
     fn head(&self) -> Option<&Mutex<HashMap<K, V>>> {
         self.head.as_ref().map(|node| &node.elem)
     }
+
+    /// Create a new binding in the toplevel
     pub fn insert(&self, key: K, val: V) {
         self.head().unwrap().lock().unwrap().insert(key, val);
     }
+
+    ///
     pub fn get(&self, key: &K) -> Option<V> {
         let mut r = &self.head;
         loop {
