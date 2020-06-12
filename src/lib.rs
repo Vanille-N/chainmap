@@ -26,6 +26,7 @@ where
     elem: Mutex<HashMap<K, V>>,
     next: Link<K, V>,
     fallthrough: bool,
+    unlocked: Mutex<bool>,
 }
 
 impl<K, V> ChainMap<K, V>
@@ -55,6 +56,7 @@ where
                 elem: Mutex::new(HashMap::new()),
                 next: None,
                 fallthrough: false,
+                unlocked: Mutex::new(true),
             })),
         }
     }
@@ -66,13 +68,41 @@ where
                 elem: Mutex::new(h),
                 next: None,
                 fallthrough: false,
+                unlocked: Mutex::new(true),
             })),
         }
     }
 
     /// Create a new binding in the toplevel
     pub fn insert(&mut self, key: K, val: V) {
-        self.head().unwrap().lock().unwrap().insert(key, val);
+        if *self.head.as_ref().unwrap().unlocked.lock().unwrap() {
+            self.head().unwrap().lock().unwrap().insert(key, val);
+        } else {
+            panic!("Map is locked, could not insert");
+        }
+    }
+
+    /// Protect map against modifications
+    ///
+    /// Does not extend to maps below, all keys whose value must not change should be re-inserted
+    /// in the toplevel.
+    pub fn lock(&mut self) {
+        *self.head.as_ref().unwrap().unlocked.lock().unwrap() = false;
+    }
+
+    /// Release write protection
+    pub fn unlock(&mut self) {
+        *self.head.as_ref().unwrap().unlocked.lock().unwrap() = true;
+    }
+
+    pub fn locked(mut self) -> Self {
+        self.lock();
+        self
+    }
+
+    pub fn unlocked(mut self) -> Self {
+        self.unlock();
+        self
     }
 
     /// Retrieve value associated with the first appearance of `key` in the chain
@@ -114,8 +144,12 @@ where
             match m.elem.lock().unwrap().get_mut(&key) {
                 None => r = &m.next,
                 Some(val) => {
-                    *val = newval;
-                    return;
+                    if *m.unlocked.lock().unwrap() {
+                        *val = newval;
+                        return;
+                    } else {
+                        panic!("Key is locked, failed to update");
+                    }
                 }
             }
         }
@@ -129,8 +163,12 @@ where
             match m.elem.lock().unwrap().get_mut(&key) {
                 None => r = &m.next,
                 Some(val) => {
-                    *val = newval;
-                    return;
+                    if *m.unlocked.lock().unwrap() {
+                        *val = newval;
+                        return;
+                    } else {
+                        break;
+                    }
                 }
             }
         }
@@ -144,6 +182,7 @@ where
                 elem: Mutex::new(HashMap::new()),
                 next: self.head.clone(),
                 fallthrough: true,
+                unlocked: Mutex::new(true),
             })),
         }
     }
@@ -154,6 +193,7 @@ where
                 elem: Mutex::new(HashMap::new()),
                 next: self.head.clone(),
                 fallthrough: false,
+                unlocked: Mutex::new(true),
             })),
         }
     }
@@ -244,6 +284,7 @@ where
                 elem: Mutex::new(h),
                 next: self.head.clone(),
                 fallthrough: false,
+                unlocked: Mutex::new(true),
             })),
         }
     }
