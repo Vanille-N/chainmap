@@ -118,6 +118,7 @@ where
         !*self.head.as_ref().unwrap().unlocked.lock().unwrap()
     }
 
+    /// Resulting layer cannot modify any value lower in the map
     pub fn readonly(self) -> Self {
         *self.head.as_ref().unwrap().write_auth.lock().unwrap() = false;
         self
@@ -155,7 +156,9 @@ where
 
     /// Replace old value with new
     /// # Panics
-    /// Panics if `key` does not already exist or if first layer with `key` is locked
+    /// - if `key` does not already exist
+    /// - if first layer with `key` is locked
+    /// - if `key` is only found after a write-protected layer
     pub fn update(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
         while let Some(m) = r {
@@ -179,7 +182,8 @@ where
     }
 
     /// Replace old value with new, create binding in topmost map if `key` does not exist
-    /// or if first layer with `key` is locked.
+    /// or if first layer with `key` is locked or if `key` is only accessible after a
+    /// write-protected layer.
     pub fn update_or(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
         while let Some(m) = r {
@@ -640,8 +644,38 @@ mod test {
     fn update_or_preserves_lock() {
         let ch0 = ChainMap::new_with(map![0 => 'a']).locked();
         let mut ch1 = ch0.extend();
+        assert!(ch0.is_locked());
         ch1.update_or(&0, 'b');
         assert_eq!(ch1.get(&0), Some('b'));
         assert_eq!(ch0.get(&0), Some('a'));
+    }
+
+    #[test]
+    #[should_panic]
+    fn update_write_protect() {
+        let ch0 = ChainMap::new_with(map![0 => 'a']);
+        let mut ch1 = ch0.extend().readonly();
+        ch1.update(&0, 'b');
+    }
+
+    #[test]
+    fn update_or_readonly() {
+        let ch0 = ChainMap::new_with(map![0 => 'a']);
+        let mut ch2 = ch0.extend().readonly().extend();
+        assert_eq!(ch2.get(&0), Some('a'));
+        ch2.update_or(&0, 'b');
+        assert_eq!(ch2.get(&0), Some('b'));
+        assert_eq!(ch0.get(&0), Some('a'));
+    }
+
+    #[test]
+    fn self_bypass_readonly() {
+        let mut ch0 = ChainMap::new_with(map![0 => 'a']);
+        let ch1 = ch0.extend().readonly();
+        assert_eq!(ch1.get(&0), Some('a'));
+        ch0.update(&0, 'b');
+        ch0.insert(1, 'c');
+        assert_eq!(ch1.get(&0), Some('b'));
+        assert_eq!(ch1.get(&1), Some('c'));
     }
 }
