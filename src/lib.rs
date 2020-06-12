@@ -580,4 +580,38 @@ mod test {
         assert_eq!(ch1.get(&1), Some('b'));
         assert_eq!(ch0.get(&1), Some('c'));
     }
+
+    #[test]
+    #[should_panic]
+    fn update_despite_lock() {
+        let mut ch = ChainMap::new_with(map![0 => 'a']).locked();
+        ch.update(&0, 'b');
+    }
+
+    #[test]
+    #[should_panic]
+    fn insert_despite_lock() {
+        let mut ch = ChainMap::new();
+        ch.lock();
+        ch.insert(0, 'a');
+    }
+
+    #[test]
+    fn lock_and_unlock() {
+        let ch0 = ChainMap::new_with(map![0 => 'a']).locked();
+        let mut ch1 = ch0.extend();
+        let mut ch0 = ch0.unlocked();
+        ch1.update(&0, 'b');
+        ch0.lock();
+        assert_eq!(ch1.get(&0), Some('b'));
+    }
+
+    #[test]
+    fn update_or_preserves_lock() {
+        let ch0 = ChainMap::new_with(map![0 => 'a']).locked();
+        let mut ch1 = ch0.extend();
+        ch1.update_or(&0, 'b');
+        assert_eq!(ch1.get(&0), Some('b'));
+        assert_eq!(ch0.get(&0), Some('a'));
+    }
 }
