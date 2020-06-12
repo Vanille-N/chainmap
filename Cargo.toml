@@ -1,6 +1,6 @@
 [package]
 name = "chainmap"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Vanille-N <neven.villani@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -9,5 +9,6 @@ readme = "README.md"
 repository = "https://github.com/Vanille-N/chainmap"
 keywords = ["hashmap", "chain", "mutex"]
 categories = ["data-structures"]
+include = ["src/lib.rs", "README.md"]
 
 [dependencies]
