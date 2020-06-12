@@ -102,7 +102,7 @@ where
                 Some(val) => return Some(val.clone()),
             }
         }
-        None
+        unreachable!()
     }
 
     /// Replace old value with new
@@ -499,10 +499,11 @@ mod test {
     #[test]
     fn update_or() {
         let mut ch0 = ChainMap::new();
-        let ch1 = ch0.extend_with(map![0 => 'a']);
+        let mut ch1 = ch0.extend_with(map![0 => 'a']);
         ch0.update_or(&0, 'b');
+        ch1.update_or(&0, 'c');
         assert_eq!(ch0.get(&0), Some('b'));
-        assert_eq!(ch1.get(&0), Some('a'));
+        assert_eq!(ch1.get(&0), Some('c'));
     }
 
     #[test]
