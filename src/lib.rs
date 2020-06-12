@@ -27,6 +27,7 @@ where
     next: Link<K, V>,
     fallthrough: bool,
     unlocked: Mutex<bool>,
+    write_auth: Mutex<bool>,
 }
 
 impl<K, V> ChainMap<K, V>
@@ -57,6 +58,7 @@ where
                 next: None,
                 fallthrough: false,
                 unlocked: Mutex::new(true),
+                write_auth: Mutex::new(true),
             })),
         }
     }
@@ -69,6 +71,7 @@ where
                 next: None,
                 fallthrough: false,
                 unlocked: Mutex::new(true),
+                write_auth: Mutex::new(true),
             })),
         }
     }
@@ -115,6 +118,11 @@ where
         !*self.head.as_ref().unwrap().unlocked.lock().unwrap()
     }
 
+    pub fn readonly(self) -> Self {
+        *self.head.as_ref().unwrap().write_auth.lock().unwrap() = false;
+        self
+    }
+
     /// Retrieve value associated with the first appearance of `key` in the chain
     pub fn get(&self, key: &K) -> Option<V> {
         let mut r = &self.head;
@@ -151,16 +159,20 @@ where
     pub fn update(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
         while let Some(m) = r {
-            match m.elem.lock().unwrap().get_mut(&key) {
-                None => r = &m.next,
-                Some(val) => {
-                    if *m.unlocked.lock().unwrap() {
-                        *val = newval;
-                        return;
-                    } else {
-                        panic!("Key is locked, failed to update");
+            if *m.write_auth.lock().unwrap() {
+                match m.elem.lock().unwrap().get_mut(&key) {
+                    None => r = &m.next,
+                    Some(val) => {
+                        if *m.unlocked.lock().unwrap() {
+                            *val = newval;
+                            return;
+                        } else {
+                            panic!("Key is locked, failed to update");
+                        }
                     }
                 }
+            } else {
+                break;
             }
         }
         panic!("Key does not exist, failed to update");
@@ -171,16 +183,20 @@ where
     pub fn update_or(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
         while let Some(m) = r {
-            match m.elem.lock().unwrap().get_mut(&key) {
-                None => r = &m.next,
-                Some(val) => {
-                    if *m.unlocked.lock().unwrap() {
-                        *val = newval;
-                        return;
-                    } else {
-                        break;
+            if *m.write_auth.lock().unwrap() {
+                match m.elem.lock().unwrap().get_mut(&key) {
+                    None => r = &m.next,
+                    Some(val) => {
+                        if *m.unlocked.lock().unwrap() {
+                            *val = newval;
+                            return;
+                        } else {
+                            break;
+                        }
                     }
                 }
+            } else {
+                break
             }
         }
         self.insert(key.clone(), newval);
@@ -194,6 +210,7 @@ where
                 next: self.head.clone(),
                 fallthrough: true,
                 unlocked: Mutex::new(true),
+                write_auth: Mutex::new(true),
             })),
         }
     }
@@ -205,6 +222,7 @@ where
                 next: self.head.clone(),
                 fallthrough: false,
                 unlocked: Mutex::new(true),
+                write_auth: Mutex::new(true),
             })),
         }
     }
@@ -296,6 +314,7 @@ where
                 next: self.head.clone(),
                 fallthrough: false,
                 unlocked: Mutex::new(true),
+                write_auth: Mutex::new(true),
             })),
         }
     }
