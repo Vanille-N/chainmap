@@ -74,8 +74,10 @@ where
     }
 
     /// Create a new binding in the toplevel
+    /// # Panics
+    /// Panics if toplevel map is locked
     pub fn insert(&mut self, key: K, val: V) {
-        if *self.head.as_ref().unwrap().unlocked.lock().unwrap() {
+        if self.is_unlocked() {
             self.head().unwrap().lock().unwrap().insert(key, val);
         } else {
             panic!("Map is locked, could not insert");
@@ -103,6 +105,14 @@ where
     pub fn unlocked(mut self) -> Self {
         self.unlock();
         self
+    }
+
+    pub fn is_unlocked(&self) -> bool {
+        *self.head.as_ref().unwrap().unlocked.lock().unwrap()
+    }
+
+    pub fn is_locked(&self) -> bool {
+        !*self.head.as_ref().unwrap().unlocked.lock().unwrap()
     }
 
     /// Retrieve value associated with the first appearance of `key` in the chain
@@ -137,7 +147,7 @@ where
 
     /// Replace old value with new
     /// # Panics
-    /// Panics if `key` does not already exist
+    /// Panics if `key` does not already exist or if first layer with `key` is locked
     pub fn update(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
         while let Some(m) = r {
@@ -157,6 +167,7 @@ where
     }
 
     /// Replace old value with new, create binding in topmost map if `key` does not exist
+    /// or if first layer with `key` is locked.
     pub fn update_or(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
         while let Some(m) = r {
