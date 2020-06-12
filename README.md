@@ -1,11 +1,13 @@
 # ChainMap
 
 [![](https://img.shields.io/badge/github-Vanille--N/chainmap-8da0cb?logo=github)](https://github.com/Vanille-N/chainmap)
-[![](http://meritbadge.herokuapp.com/chainmap)](https://crates.io/crates/chainmap)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Codecov](https://img.shields.io/codecov/c/github/Vanille-N/chainmap?logo=codecov)](https://codecov.io/github/Vanille-N/chainmap)
+
+`chainmap` [![](http://meritbadge.herokuapp.com/chainmap)](https://crates.io/crates/chainmap)
 [![API](https://docs.rs/chainmap/badge.svg)](https://docs.rs/chainmap)
 
-This library provides a chain of `HashMap`s with interior mutability of each intermediate `HashMap`. The `HashMap`s are reference-counted, meaning that it is possible to create a tree of layers of `HashMap`s and not just a single chain.
+This library provides a chain of `HashMap`s with interior mutability of each intermediate layer. The `HashMap`s are reference-counted, thus it is possible to create a tree of layers of `HashMap`s and not just a single chain.
 
 The higher maps in the tree (close to the leaves) have higher priority.
 
