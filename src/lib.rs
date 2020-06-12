@@ -414,6 +414,24 @@ where
         std::mem::replace(&mut *self, oldlevel);
         newlevel
     }
+
+    /// Gather all keys in a single `HashMap`.
+    ///
+    /// Only keys accessible through a direct path are considered:
+    /// if we `let map = chain.collect()` then for all `k` valid keys, `map.get(&k) == chain.get(&k)`.
+    pub fn collect(&self) -> HashMap<K, V> {
+        let mut r = &self.head;
+        let mut layers = Vec::new();
+        while let Some(m) = r {
+            layers.push(&m.elem);
+            r = &m.next;
+        }
+        let mut map = HashMap::new();
+        for l in layers.into_iter().rev() {
+            map.extend(l.lock().unwrap().clone())
+        }
+        map
+    }
 }
 
 #[cfg(test)]
