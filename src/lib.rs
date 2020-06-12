@@ -530,4 +530,13 @@ mod test {
         assert_eq!(ch1.get(&1), None);
         assert_eq!(ch1.local_get(&1), None);
     }
+
+    #[test]
+    fn fork_with() {
+        let mut ch0 = ChainMap::new_with(map![0 => 'a']);
+        let ch1 = ch0.fork_with(map![1 => 'b']);
+        ch0.update_or(&1, 'c');
+        assert_eq!(ch1.get(&1), Some('b'));
+        assert_eq!(ch0.get(&1), Some('c'));
+    }
 }
