@@ -711,4 +711,15 @@ mod test {
             HashMap::<i32, char>::new()
         );
     }
+
+    #[test]
+    fn clone_copies_one_layer() {
+        let ch0 = ChainMap::new_with(map![0 => 'a']);
+        let mut ch1a = ch0.extend_with(map![1 => 'b']);
+        let ch1b = ch1a.clone();
+        ch1a.update(&0, 'c');
+        ch1a.update(&1, 'd');
+        assert_eq!(ch1b.get(&0), Some('c'));
+        assert_eq!(ch1b.get(&1), Some('b'));
+    }
 }
