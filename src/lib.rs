@@ -200,7 +200,7 @@ where
                     }
                 }
             } else {
-                break
+                break;
             }
         }
         self.insert(key.clone(), newval);
@@ -699,11 +699,16 @@ mod test {
 
     #[test]
     fn collect() {
-        assert_eq!(ChainMap::new_with(map![0 => 'a', 3 => 'd'])
-            .extend_with(map![1 => 'b', 2 => 'c'])
-            .extend_with(map![0 => 'e'])
-            .collect(),
-            map![0 => 'e', 1 => 'b', 2 => 'c', 3 => 'd']);
-        assert_eq!(ChainMap::<i32, char>::new().collect(), HashMap::<i32, char>::new());
+        assert_eq!(
+            ChainMap::new_with(map![0 => 'a', 3 => 'd'])
+                .extend_with(map![1 => 'b', 2 => 'c'])
+                .extend_with(map![0 => 'e'])
+                .collect(),
+            map![0 => 'e', 1 => 'b', 2 => 'c', 3 => 'd']
+        );
+        assert_eq!(
+            ChainMap::<i32, char>::new().collect(),
+            HashMap::<i32, char>::new()
+        );
     }
 }
