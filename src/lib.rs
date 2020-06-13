@@ -7,7 +7,9 @@ use std::sync::Mutex;
 
 /// A structure for managing a tree of `HashMap`s
 ///
-/// General layout inspired by [A Persistent Singly-Linked Stack](https://rust-unofficial.github.io/too-many-lists/third.html), adapted and extended with `Mutex`es and `HashMap`s
+/// General layout inspired by
+/// [A Persistent Singly-Linked Stack](https://rust-unofficial.github.io/too-many-lists/third.html),
+/// adapted and extended with `Mutex`es and `HashMap`s
 pub struct ChainMap<K, V>
 where
     K: Eq + Hash + Clone,
