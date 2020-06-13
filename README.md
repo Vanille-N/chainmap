@@ -67,3 +67,17 @@ for _ in 0..1000 {
 ```
 
 The rules for which map entries are accessible from a certain level of the `ChainMap` tree are exactly the same as how they would be for the corresponding scopes.
+
+## Questions
+
+### Why another chain map ?
+
+There are already chain maps out there:
+
+`chain-map` [![](http://meritbadge.herokuapp.com/chain-map)](https://crates.io/crates/chain-map)
+
+`hash-chain` [![](http://meritbadge.herokuapp.com/hash-chain)](https://crates.io/crates/hash-chain)
+
+However, both of these implementations of a chain map do not allow multiple branches from a single root, as they are wrappers around a `Vec<HashMap<K, V>>`.
+
+On the other hand, this crate allows one to fork several maps out of a common root, saving memory usage at the cost of a less friendly internal representation: A `Vec<HashMap<K, V>>` is certainly better to work with than a tree of `Option<Rc<(Mutex<HashMap<K, V>, Self)>>`s.
