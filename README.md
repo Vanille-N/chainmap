@@ -81,3 +81,35 @@ There are already chain maps out there:
 However, both of these implementations of a chain map do not allow multiple branches from a single root, as they are wrappers around a `Vec<HashMap<K, V>>`.
 
 On the other hand, this crate allows one to fork several maps out of a common root, saving memory usage at the cost of a less friendly internal representation: A `Vec<HashMap<K, V>>` is certainly better to work with than a tree of `Option<Rc<(Mutex<HashMap<K, V>, Self)>>`s.
+
+### Why require `mut` everywhere if there is interior mutability ?
+
+The `ChainMap` could just as well take `&self` everywhere instead of requiring `&mut self`, and it would still work. After all, a `Mutex` can have its contents changed even if its container is immutable.
+
+There are two reasons for not making all methods take `&self`:
+
+1. Despite interior mutability, it would feel weird to `insert` into a non-`mut` structure.
+
+    A `HashMap` requires `mut` to `insert`, and I wanted the `ChainMap` to feel like a `HashMap` as much as possible, hence the choice of the same method names `insert` and `get`.
+
+2. The `fork` and `fork_with` methods do require `&mut self` and there is no (safe) way to bypass that.
+
+    `fork` is declared as:
+    ```rust
+    pub fn fork(&mut self) -> Self {
+        let newlevel = self.extend();
+        let oldlevel = self.extend_fallthrough();
+        std::mem::replace(&mut *self, oldlevel);
+        newlevel
+    }
+    ```
+    When used:
+    ```rust
+    let ch = ChainMap::new();
+    let _ = ch.fork();
+    ```
+    `ch0` is not the same object before and after the call to `fork` !
+
+    The object that used to be contained in `ch` has been moved out and there is now no way to access the former `ch` other than implicitly by reading it from one of its children.
+
+    It is also impossible to insert a new key into it.
