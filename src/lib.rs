@@ -434,6 +434,24 @@ where
     }
 }
 
+impl<K, V> Clone for ChainMap<K, V>
+where
+    K: Clone + Hash + Eq,
+    V: Clone,
+{
+    fn clone(&self) -> Self {
+        ChainMap {
+            head: Some(Rc::new(Node {
+                elem: Mutex::new(self.head.as_ref().unwrap().elem.lock().unwrap().clone()),
+                next: self.head.as_ref().unwrap().next.clone(),
+                fallthrough: self.head.as_ref().unwrap().fallthrough,
+                unlocked: Mutex::new(*self.head.as_ref().unwrap().unlocked.lock().unwrap()),
+                write_auth: Mutex::new(*self.head.as_ref().unwrap().write_auth.lock().unwrap()),
+            })),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
