@@ -80,7 +80,7 @@ There are already chain maps out there:
 
 However, both of these implementations of a chain map do not allow multiple branches from a single root, as they are wrappers around a `Vec<HashMap<K, V>>`.
 
-On the other hand, this crate allows one to fork several maps out of a common root, saving memory usage at the cost of a less friendly internal representation: A `Vec<HashMap<K, V>>` is certainly better to work with than a tree of `Option<Rc<(Mutex<HashMap<K, V>, Self)>>`s.
+On the other hand, this crate allows one to fork several maps out of a common root, saving memory usage at the cost of a less friendly internal representation: A `Vec<HashMap<K, V>>` is certainly better to work with than a tree of `Option<Rc<Mutex<HashMap<K, V>>>>`.
 
 ### Why require `mut` everywhere if there is interior mutability ?
 
@@ -99,6 +99,7 @@ There are two reasons for not making all methods take `&self`:
     pub fn fork(&mut self) -> Self {
         let newlevel = self.extend();
         let oldlevel = self.extend_fallthrough();
+        // This line requires &mut self
         std::mem::replace(&mut *self, oldlevel);
         newlevel
     }
