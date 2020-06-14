@@ -15,6 +15,10 @@ The higher maps in the tree (close to the leaves) have higher priority.
 
 The implementation allows several maps to read and write to a common root. Not as many items are cloned as when using a `HashMap`. Calls to `insert` have been measured to be about twice as slow as when using a plain `HashMap`, and both `update` and `get` are linear relative to the depth of the `ChainMap`: do not use this crate if what you want to do can be solved with a plain `HashMap`.
 
+On the other hand, you might want to use this if:
+- you have many calls to `clone` on a `HashMap` with constant values, in which case you can pass around `ChainMap`s with `map.extend().readonly()`
+- you want a `HashMap` shared by multiple objects/threads, then you can use `map.extend()` and make calls to `update` on it
+- you have a collection of mappings that you want to override locally without affecting the default values, this can be done with `map.extend()` then calls to `insert`
 
 An example from the appropriate section of the Book: 15. Scoping rules - RAII
 
