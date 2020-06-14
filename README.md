@@ -11,7 +11,10 @@ This library provides a chain of `HashMap`s with interior mutability of each int
 
 The higher maps in the tree (close to the leaves) have higher priority.
 
-One possible use case is for the management of nested scopes.
+## What is this crate good for ?
+
+The implementation allows several maps to read and write to a common root. Not as many items are cloned as when using a `HashMap`. Calls to `insert` have been measured to be about twice as slow as when using a plain `HashMap`, and both `update` and `get` are linear relative to the depth of the `ChainMap`: do not use this crate if what you want to do can be solved with a plain `HashMap`.
+
 
 An example from the appropriate section of the Book: 15. Scoping rules - RAII
 
