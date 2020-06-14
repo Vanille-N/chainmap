@@ -20,6 +20,10 @@ On the other hand, you might want to use this if:
 - you want a `HashMap` shared by multiple objects/threads, then you can use `map.extend()` and make calls to `update` on it
 - you have a collection of mappings that you want to override locally without affecting the default values, this can be done with `map.extend()` then calls to `insert`
 
+Possible use cases that group all of the above include:
+
+#### 1. Management of nested scopes for implementing an interpreter
+
 An example from the appropriate section of the Book: 15. Scoping rules - RAII
 
 ```rust
@@ -44,7 +48,7 @@ fn main() {
 ```
 
 Could be represented as
-```
+```text
 MainScope["_box2" => 5i32]
     ├── NestedScope["_box3" => 4i32]
     ├── LoopScope0[]
@@ -75,9 +79,8 @@ for _ in 0..1000 {
 
 The rules for which map entries are accessible from a certain level of the `ChainMap` tree are exactly the same as how they would be for the corresponding scopes.
 
-## Questions
 
-### Why another chain map ?
+## Why another chain map ?
 
 There are already chain maps out there:
 
@@ -89,7 +92,7 @@ However, both of these implementations of a chain map do not allow multiple bran
 
 On the other hand, this crate allows one to fork several maps out of a common root, saving memory usage at the cost of a less friendly internal representation: A `Vec<HashMap<K, V>>` is certainly better to work with than a tree of `Option<Rc<Mutex<HashMap<K, V>>>>`.
 
-### Why require `mut` everywhere if there is interior mutability ?
+## Why require `mut` everywhere if there is interior mutability ?
 
 The `ChainMap` could just as well take `&self` everywhere instead of requiring `&mut self`, and it would still work. After all, a `Mutex` can have its contents changed even if its container is immutable.
 
