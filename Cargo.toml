@@ -11,4 +11,10 @@ keywords = ["hashmap", "chain", "mutex"]
 categories = ["data-structures"]
 include = ["src/lib.rs", "README.md"]
 
-[dependencies]
+[dev-dependencies]
+criterion = "0.3"
+rand = "0.7"
+
+[[bench]]
+name = "benchmark"
+harness = false
