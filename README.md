@@ -79,6 +79,35 @@ for _ in 0..1000 {
 
 The rules for which map entries are accessible from a certain level of the `ChainMap` tree are exactly the same as how they would be for the corresponding scopes.
 
+#### 2. Configuration files at different levels
+
+For example with `cargo`:
+```text
+~
+├── proj/
+│    ├── foo/
+│    │    ├── bar/
+│    │    │    └── .cargo/config
+│    │    ├── baz/
+│    │    │    └── .cargo/config
+│    │    └── .cargo/config
+│    ├── quux/
+│    │    └── .cargo/config
+│    └── .cargo/config
+└── .cargo/config
+```
+
+The `config` files closer to the leaves have higher priority and can override the configuration settings defined closer to the root in the directory tree.
+
+This situation can be trivially abstracted with a `ChainMap`:
+```rust
+let home = ChainMap::new();
+let proj = home.extend();
+let foo = proj.extend();
+let quux = proj.extend();
+let bar = foo.extend();
+let baz = foo.extend();
+```
 
 ## Why another chain map ?
 
