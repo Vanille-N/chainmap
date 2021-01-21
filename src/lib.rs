@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::rc::Rc;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// A structure for managing a tree of `HashMap`s
 ///
@@ -28,8 +29,8 @@ where
     elem: Mutex<HashMap<K, V>>,
     next: Link<K, V>,
     fallthrough: bool,
-    unlocked: Mutex<bool>,
-    write_auth: Mutex<bool>,
+    unlocked: AtomicBool,
+    write_auth: AtomicBool,
 }
 
 impl<K, V> ChainMap<K, V>
@@ -59,8 +60,8 @@ where
                 elem: Mutex::new(HashMap::new()),
                 next: None,
                 fallthrough: false,
-                unlocked: Mutex::new(true),
-                write_auth: Mutex::new(true),
+                unlocked: AtomicBool::new(true),
+                write_auth: AtomicBool::new(true),
             })),
         }
     }
@@ -72,8 +73,8 @@ where
                 elem: Mutex::new(h),
                 next: None,
                 fallthrough: false,
-                unlocked: Mutex::new(true),
-                write_auth: Mutex::new(true),
+                unlocked: AtomicBool::new(true),
+                write_auth: AtomicBool::new(true),
             })),
         }
     }
@@ -94,12 +95,12 @@ where
     /// Does not extend to maps below, all keys whose value must not change should be re-inserted
     /// in the toplevel.
     pub fn lock(&mut self) {
-        *self.head.as_ref().unwrap().unlocked.lock().unwrap() = false;
+        self.head.as_ref().unwrap().unlocked.store(false, Ordering::Relaxed);
     }
 
     /// Release write protection
     pub fn unlock(&mut self) {
-        *self.head.as_ref().unwrap().unlocked.lock().unwrap() = true;
+        self.head.as_ref().unwrap().unlocked.store(true, Ordering::Relaxed);
     }
 
     pub fn locked(mut self) -> Self {
@@ -113,16 +114,16 @@ where
     }
 
     pub fn is_unlocked(&self) -> bool {
-        *self.head.as_ref().unwrap().unlocked.lock().unwrap()
+        self.head.as_ref().unwrap().unlocked.load(Ordering::Relaxed)
     }
 
     pub fn is_locked(&self) -> bool {
-        !*self.head.as_ref().unwrap().unlocked.lock().unwrap()
+        !self.head.as_ref().unwrap().unlocked.load(Ordering::Relaxed)
     }
 
     /// Resulting layer cannot modify any value lower in the map
     pub fn readonly(self) -> Self {
-        *self.head.as_ref().unwrap().write_auth.lock().unwrap() = false;
+        self.head.as_ref().unwrap().write_auth.store(false, Ordering::Relaxed);
         self
     }
 
@@ -164,11 +165,11 @@ where
     pub fn update(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
         while let Some(m) = r {
-            if *m.write_auth.lock().unwrap() {
+            if m.write_auth.load(Ordering::Relaxed) {
                 match m.elem.lock().unwrap().get_mut(&key) {
                     None => r = &m.next,
                     Some(val) => {
-                        if *m.unlocked.lock().unwrap() {
+                        if m.unlocked.load(Ordering::Relaxed) {
                             *val = newval;
                             return;
                         } else {
@@ -189,11 +190,11 @@ where
     pub fn update_or(&mut self, key: &K, newval: V) {
         let mut r = &self.head;
         while let Some(m) = r {
-            if *m.write_auth.lock().unwrap() {
+            if m.write_auth.load(Ordering::Relaxed) {
                 match m.elem.lock().unwrap().get_mut(&key) {
                     None => r = &m.next,
                     Some(val) => {
-                        if *m.unlocked.lock().unwrap() {
+                        if m.unlocked.load(Ordering::Relaxed) {
                             *val = newval;
                             return;
                         } else {
@@ -215,8 +216,8 @@ where
                 elem: Mutex::new(HashMap::new()),
                 next: self.head.clone(),
                 fallthrough: true,
-                unlocked: Mutex::new(true),
-                write_auth: Mutex::new(true),
+                unlocked: AtomicBool::new(true),
+                write_auth: AtomicBool::new(true),
             })),
         }
     }
@@ -227,8 +228,8 @@ where
                 elem: Mutex::new(HashMap::new()),
                 next: self.head.clone(),
                 fallthrough: false,
-                unlocked: Mutex::new(true),
-                write_auth: Mutex::new(true),
+                unlocked: AtomicBool::new(true),
+                write_auth: AtomicBool::new(true),
             })),
         }
     }
@@ -319,8 +320,8 @@ where
                 elem: Mutex::new(h),
                 next: self.head.clone(),
                 fallthrough: false,
-                unlocked: Mutex::new(true),
-                write_auth: Mutex::new(true),
+                unlocked: AtomicBool::new(true),
+                write_auth: AtomicBool::new(true),
             })),
         }
     }
@@ -328,7 +329,7 @@ where
     pub fn fork(&mut self) -> Self {
         let newlevel = self.extend();
         let oldlevel = self.extend_fallthrough();
-        std::mem::replace(&mut *self, oldlevel);
+        let _ = std::mem::replace(&mut *self, oldlevel);
         newlevel
     }
 
@@ -413,7 +414,7 @@ where
     pub fn fork_with(&mut self, h: HashMap<K, V>) -> Self {
         let newlevel = self.extend_with(h);
         let oldlevel = self.extend_fallthrough();
-        std::mem::replace(&mut *self, oldlevel);
+        let _ = std::mem::replace(&mut *self, oldlevel);
         newlevel
     }
 
@@ -447,8 +448,8 @@ where
                 elem: Mutex::new(self.head.as_ref().unwrap().elem.lock().unwrap().clone()),
                 next: self.head.as_ref().unwrap().next.clone(),
                 fallthrough: self.head.as_ref().unwrap().fallthrough,
-                unlocked: Mutex::new(*self.head.as_ref().unwrap().unlocked.lock().unwrap()),
-                write_auth: Mutex::new(*self.head.as_ref().unwrap().write_auth.lock().unwrap()),
+                unlocked: AtomicBool::new(self.head.as_ref().unwrap().unlocked.load(Ordering::Relaxed)),
+                write_auth: AtomicBool::new(self.head.as_ref().unwrap().write_auth.load(Ordering::Relaxed)),
             })),
         }
     }

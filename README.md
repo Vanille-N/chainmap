@@ -148,7 +148,7 @@ There are two reasons for not making all methods take `&self`:
     let ch = ChainMap::new();
     let _ = ch.fork();
     ```
-    `ch0` is not the same object before and after the call to `fork` !
+    `ch` is not the same object before and after the call to `fork` !
 
     The object that used to be contained in `ch` has been moved out and there is now no way to access the former `ch` other than implicitly by reading it from one of its children.
 
